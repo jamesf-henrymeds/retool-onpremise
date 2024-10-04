@@ -7,3 +7,4 @@ retool-secrets.yaml
 
 helm/charts
 .idea/
+.vscode/
