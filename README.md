@@ -1,3 +1,6 @@
+### ⚠️ This repository needs to be public to be easily deployable to any VM. Don't commit anything proprietary. ⚠️
+____
+
 <p align="center">
     <a href="https://retool.com/"><img src="https://raw.githubusercontent.com/tryretool/brand-assets/master/Logos/logo-full-black.png" alt="Retool logo" height="100"></a> <br>
     <b>Build internal tools, remarkably fast.</b>
