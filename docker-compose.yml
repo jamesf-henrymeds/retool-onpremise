@@ -147,9 +147,8 @@ services:
       - backend-network
     volumes:
       - data:/var/lib/postgresql/data
-    # Uncomment to access DB with client
-    # ports:
-    #   - "15432:5432"
+    ports:
+      - "5440:5432"
 
   retooldb-postgres:
     image: "postgres:14.3"
@@ -158,9 +157,8 @@ services:
       - backend-network
     volumes:
       - retooldb-data:/var/lib/postgresql/data
-    # Uncomment to access DB with client
-    # ports:
-    #   - "25432:5432"
+    ports:
+      - "5441:5432"
 
   # Not required, but leave this container to use nginx for handling the frontend & SSL certification
   https-portal:
