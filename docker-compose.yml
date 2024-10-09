@@ -161,22 +161,19 @@ services:
       - "5441:5432"
 
   # Not required, but leave this container to use nginx for handling the frontend & SSL certification
-  https-portal:
-    image: tryretool/https-portal:latest
+  nginx:
+    image: nginx:latest
     ports:
       - "80:80"
       - "443:443"
+    command: [nginx-debug, "-g", "daemon off;"] # Improve error logging in the container
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+      - ./certs:/etc/nginx/certs
     links:
       - api
-    restart: always
-    env_file: ./docker.env
-    environment:
-      STAGE: "local" # <- Change 'local' to 'production' to use a LetsEncrypt signed SSL cert
-      CLIENT_MAX_BODY_SIZE: 40M
-      KEEPALIVE_TIMEOUT: 605
-      PROXY_CONNECT_TIMEOUT: 600
-      PROXY_SEND_TIMEOUT: 600
-      PROXY_READ_TIMEOUT: 600
+    depends_on:
+      - api
     networks:
       - frontend-network
 
