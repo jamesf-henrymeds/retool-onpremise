@@ -22,7 +22,6 @@ services:
       # - WORKFLOW_TEMPORAL_TLS_CRT
       # - WORKFLOW_TEMPORAL_TLS_KEY
     networks:
-      - frontend-network
       - backend-network
       - code-executor-network
     depends_on:
@@ -160,25 +159,7 @@ services:
     ports:
       - "5441:5432"
 
-  # Not required, but leave this container to use nginx for handling the frontend & SSL certification
-  nginx:
-    image: nginx:latest
-    ports:
-      - "80:80"
-      - "443:443"
-    command: [nginx-debug, "-g", "daemon off;"] # Improve error logging in the container
-    volumes:
-      - ./nginx:/etc/nginx/conf.d
-      - ./certs:/etc/nginx/certs
-    links:
-      - api
-    depends_on:
-      - api
-    networks:
-      - frontend-network
-
 networks:
-  frontend-network:
   backend-network:
   code-executor-network:
 
