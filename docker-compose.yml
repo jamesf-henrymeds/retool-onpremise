@@ -1,7 +1,9 @@
 version: "2"
 services:
   api:
-    image: tryretool/backend:3.75.9-stable
+    build:
+      context: ./
+      dockerfile: Dockerfile
     env_file: ./docker.env
     environment:
       - DEPLOYMENT_TEMPLATE_TYPE=docker-compose
@@ -28,7 +30,9 @@ services:
       - ${BOOTSTRAP_SOURCE:-./retool}:/usr/local/retool-repo
 
   jobs-runner:
-    image: tryretool/backend:3.75.9-stable
+    build:
+      context: ./
+      dockerfile: Dockerfile
     env_file: ./docker.env
     environment:
       - DEPLOYMENT_TEMPLATE_TYPE=docker-compose
@@ -40,7 +44,9 @@ services:
       - ./keys:/root/.ssh
 
   code-executor:
-    image: tryretool/code-executor-service:3.75.9-stable
+    build:
+      context: ./
+      dockerfile: CodeExecutor.Dockerfile
     command: bash -c "./start.sh"
     env_file: ./docker.env
     environment:
