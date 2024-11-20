@@ -15,13 +15,10 @@ services:
       - backend-network
       - code-executor-network
     depends_on:
-      - postgres
       - retooldb-postgres
       - jobs-runner
       - code-executor
-    command: bash -c "./docker_scripts/wait-for-it.sh postgres:5432; ./docker_scripts/start_api.sh"
-    links:
-      - postgres
+    command: bash -c "./docker_scripts/wait-for-it.sh ${SQL_HOST}:${SQL_PORT}; ./docker_scripts/start_api.sh"
     ports:
       - "3000:3000"
     restart: on-failure
@@ -42,11 +39,7 @@ services:
       - SERVICE_TYPE=JOBS_RUNNER
     networks:
       - backend-network
-    depends_on:
-      - postgres
-    command: bash -c "chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh postgres:5432; ./docker_scripts/start_api.sh"
-    links:
-      - postgres
+    command: bash -c "chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh ${SQL_HOST}:${SQL_PORT}; ./docker_scripts/start_api.sh"
     volumes:
       - ./keys:/root/.ssh
 
@@ -68,17 +61,6 @@ services:
     # sandboxing within your deployment.
     privileged: true
     restart: on-failure
-
-  # Retool's storage database. See these docs to migrate to an externally hosted database: https://docs.retool.com/docs/configuring-retools-storage-database
-  postgres:
-    image: "postgres:11.13"
-    env_file: docker.env
-    networks:
-      - backend-network
-    volumes:
-      - data:/var/lib/postgresql/data
-    ports:
-      - "5440:5432"
 
   retooldb-postgres:
     image: "postgres:14.3"
