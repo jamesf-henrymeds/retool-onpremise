@@ -1,39 +1,22 @@
 version: "2"
 services:
   api:
-    build:
-      context: ./
-      dockerfile: Dockerfile
+    image: tryretool/backend:3.75.9-stable
     env_file: ./docker.env
     environment:
       - DEPLOYMENT_TEMPLATE_TYPE=docker-compose
       - SERVICE_TYPE=MAIN_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
       - DBCONNECTOR_POSTGRES_POOL_MAX_SIZE=100
       - DBCONNECTOR_QUERY_TIMEOUT_MS=120000
-      - WORKFLOW_BACKEND_HOST=http://workflows-backend:3000
-      - CODE_EXECUTOR_INGRESS_DOMAIN=http://code-executor:3004
-      # If using Retool-managed Temporal cluster, leave workflow-related ENV vars commented
-      # If using self-managed cluster (Temporal Cloud or self-hosted) external to your Retool deployment, uncomment and update workflow-related ENV vars
-      # Compare deployment options here: https://docs.retool/self-hosted/concepts/temporal#compare-options
-      # - WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST=temporal
-      # - WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT=7233
-      # set these if using self-managed Temporal Cloud or require TLS for your self-managed Temporal cluster
-      # - WORKFLOW_TEMPORAL_TLS_ENABLED
-      # - WORKFLOW_TEMPORAL_TLS_CRT
-      # - WORKFLOW_TEMPORAL_TLS_KEY
+      - CODE_EXECUTOR_INGRESS_DOMAIN=http://code-executor:3004   
     networks:
-      - frontend-network
       - backend-network
       - code-executor-network
     depends_on:
-      - postgres
       - retooldb-postgres
       - jobs-runner
-      - workflows-worker
       - code-executor
-    command: bash -c "./docker_scripts/wait-for-it.sh postgres:5432; ./docker_scripts/start_api.sh"
-    links:
-      - postgres
+    command: bash -c "./docker_scripts/wait-for-it.sh ${SQL_HOST}:${SQL_PORT}; ./docker_scripts/start_api.sh"
     ports:
       - "3000:3000"
     restart: on-failure
@@ -45,85 +28,19 @@ services:
       - ${BOOTSTRAP_SOURCE:-./retool}:/usr/local/retool-repo
 
   jobs-runner:
-    build:
-      context: ./
-      dockerfile: Dockerfile
+    image: tryretool/backend:3.75.9-stable
     env_file: ./docker.env
     environment:
       - DEPLOYMENT_TEMPLATE_TYPE=docker-compose
       - SERVICE_TYPE=JOBS_RUNNER
     networks:
       - backend-network
-    depends_on:
-      - postgres
-    command: bash -c "chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh postgres:5432; ./docker_scripts/start_api.sh"
-    links:
-      - postgres
+    command: bash -c "chmod -R +x ./docker_scripts; sync; ./docker_scripts/wait-for-it.sh ${SQL_HOST}:${SQL_PORT}; ./docker_scripts/start_api.sh"
     volumes:
       - ./keys:/root/.ssh
-
-  workflows-worker:
-    build:
-      context: ./
-      dockerfile: Dockerfile
-    command: bash -c "./docker_scripts/wait-for-it.sh postgres:5432; ./docker_scripts/start_api.sh"
-    env_file: ./docker.env
-    environment:
-      - DEPLOYMENT_TEMPLATE_TYPE=docker-compose
-      - SERVICE_TYPE=WORKFLOW_TEMPORAL_WORKER
-      - NODE_OPTIONS=--max_old_space_size=1024
-      - DISABLE_DATABASE_MIGRATIONS=true
-      - WORKFLOW_BACKEND_HOST=http://workflows-backend:3000
-      - CODE_EXECUTOR_INGRESS_DOMAIN=http://code-executor:3004
-      # If using Retool-managed Temporal cluster, leave workflow-related ENV vars commented
-      # If using self-managed cluster (Temporal Cloud or self-hosted) external to your Retool deployment, uncomment and update workflow-related ENV vars
-      # Compare deployment options here: https://docs.retool/self-hosted/concepts/temporal#compare-options
-      # - WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_HOST=temporal
-      # - WORKFLOW_TEMPORAL_CLUSTER_FRONTEND_PORT=7233
-      # set these if using self-managed Temporal Cloud or require TLS for your self-managed Temporal cluster
-      # - WORKFLOW_TEMPORAL_TLS_ENABLED
-      # - WORKFLOW_TEMPORAL_TLS_CRT
-      # - WORKFLOW_TEMPORAL_TLS_KEY
-    networks:
-      - backend-network
-      - code-executor-network
-    restart: on-failure
-
-  workflows-backend:
-    build:
-      context: ./
-      dockerfile: Dockerfile
-    env_file: ./docker.env
-    environment:
-      - DEPLOYMENT_TEMPLATE_TYPE=docker-compose
-      - SERVICE_TYPE=WORKFLOW_BACKEND,DB_CONNECTOR,DB_SSH_CONNECTOR
-      - WORKFLOW_BACKEND_HOST=http://workflows-backend:3000
-      - CODE_EXECUTOR_INGRESS_DOMAIN=http://code-executor:3004
-      - DBCONNECTOR_POSTGRES_POOL_MAX_SIZE=100
-      - DBCONNECTOR_QUERY_TIMEOUT_MS=120000
-    networks:
-      - backend-network
-      - code-executor-network
-    depends_on:
-      - postgres
-      - retooldb-postgres
-      - workflows-worker
-      - code-executor
-    command: bash -c "./docker_scripts/wait-for-it.sh postgres:5432; ./docker_scripts/start_api.sh"
-    links:
-      - postgres
-    restart: on-failure
-    volumes:
-      - ./keys:/root/.ssh
-      - ./keys:/retool_backend/keys
-      - ssh:/retool_backend/autogen_ssh_keys
-      - ./retool:/usr/local/retool-git-repo
-      - ${BOOTSTRAP_SOURCE:-./retool}:/usr/local/retool-repo
 
   code-executor:
-    build:
-      context: ./
-      dockerfile: CodeExecutor.Dockerfile
+    image: tryretool/code-executor-service:3.75.9-stable
     command: bash -c "./start.sh"
     env_file: ./docker.env
     environment:
@@ -139,17 +56,6 @@ services:
     privileged: true
     restart: on-failure
 
-  # Retool's storage database. See these docs to migrate to an externally hosted database: https://docs.retool.com/docs/configuring-retools-storage-database
-  postgres:
-    image: "postgres:11.13"
-    env_file: docker.env
-    networks:
-      - backend-network
-    volumes:
-      - data:/var/lib/postgresql/data
-    ports:
-      - "5440:5432"
-
   retooldb-postgres:
     image: "postgres:14.3"
     env_file: retooldb.env
@@ -160,25 +66,7 @@ services:
     ports:
       - "5441:5432"
 
-  # Not required, but leave this container to use nginx for handling the frontend & SSL certification
-  nginx:
-    image: nginx:latest
-    ports:
-      - "80:80"
-      - "443:443"
-    command: [nginx-debug, "-g", "daemon off;"] # Improve error logging in the container
-    volumes:
-      - ./nginx:/etc/nginx/conf.d
-      - ./certs:/etc/nginx/certs
-    links:
-      - api
-    depends_on:
-      - api
-    networks:
-      - frontend-network
-
 networks:
-  frontend-network:
   backend-network:
   code-executor-network:
 
