@@ -1,4 +1,4 @@
-### ⚠️ This repository needs to be public to be easily deployable to any VM. Don't commit anything proprietary. ⚠️
+### ⚠️ This repository is a **public** fork. Don't commit anything proprietary. ⚠️
 ____
 
 <p align="center">
